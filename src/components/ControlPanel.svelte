@@ -2,6 +2,10 @@
   import { onMount, onDestroy } from 'svelte'
   import { modelState, setExpression as setExprState, setPose as setPoseState } from '../stores/modelStore.svelte'
   import { addRecordAction } from '../stores/recordingStore.svelte'
+  import { presetState, playPreset, reorderPresets } from '../stores/expressionPresetStore.svelte'
+
+  let dragId: string | null = null
+  let dropTargetId: string | null = null
 
   function setExpression(id: string) {
     setExprState(id)
@@ -30,6 +34,47 @@
     }
   }
 
+  function onDragStart(e: DragEvent, id: string) {
+    dragId = id
+    if (e.dataTransfer) {
+      e.dataTransfer.setData('text/plain', id)
+      e.dataTransfer.effectAllowed = 'move'
+    }
+  }
+
+  function onDragOver(e: DragEvent) {
+    e.preventDefault()
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move'
+    }
+  }
+
+  function onDragEnter(id: string) {
+    if (dragId !== null && dragId !== id) {
+      dropTargetId = id
+    }
+  }
+
+  function onDragLeave(id: string) {
+    if (dropTargetId === id) {
+      dropTargetId = null
+    }
+  }
+
+  function onDrop(e: DragEvent, targetId: string) {
+    e.preventDefault()
+    if (dragId !== null && dragId !== targetId) {
+      reorderPresets(dragId, targetId)
+    }
+    dragId = null
+    dropTargetId = null
+  }
+
+  function onDragEnd() {
+    dragId = null
+    dropTargetId = null
+  }
+
   onMount(() => {
     window.addEventListener('keydown', handleKeydown)
   })
@@ -53,6 +98,31 @@
           {#if expr.shortcut}
             <span class="shortcut">{expr.shortcut}</span>
           {/if}
+        </button>
+      {/each}
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>表情预设 <span class="hint">拖拽排序</span></h3>
+    <div class="preset-grid">
+      {#each presetState.presets as preset (preset.id)}
+        <button
+          class="preset-btn"
+          class:active={presetState.activePresetId === preset.id}
+          class:dragging={dragId === preset.id}
+          class:drop-target={dropTargetId === preset.id}
+          draggable="true"
+          ondragstart={(e) => onDragStart(e, preset.id)}
+          ondragover={onDragOver}
+          ondragenter={() => onDragEnter(preset.id)}
+          ondragleave={() => onDragLeave(preset.id)}
+          ondrop={(e) => onDrop(e, preset.id)}
+          ondragend={onDragEnd}
+          onclick={() => playPreset(preset.id)}
+        >
+          <span class="emoji">{preset.emoji}</span>
+          <span class="label">{preset.name}</span>
         </button>
       {/each}
     </div>
@@ -164,5 +234,61 @@
   .pose-btn.active .shortcut {
     background: rgba(255, 255, 255, 0.2);
     color: currentColor;
+  }
+
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .preset-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 6px;
+    background: #2d3748;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .preset-btn:hover {
+    background: #4a5568;
+    transform: translateY(-2px);
+  }
+
+  .preset-btn.active {
+    border-color: #f687b3;
+    background: #702459;
+  }
+
+  .preset-btn.dragging {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+
+  .preset-btn.drop-target {
+    border-color: #f687b3;
+    background: #553249;
+    transform: scale(1.05);
+  }
+
+  .preset-btn .emoji {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .preset-btn .label {
+    font-size: 11px;
+    color: #a0aec0;
+    font-weight: 500;
+  }
+
+  .preset-btn.active .label {
+    color: #fbb6ce;
   }
 </style>
