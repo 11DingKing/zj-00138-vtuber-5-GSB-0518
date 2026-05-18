@@ -2,6 +2,10 @@
   import { onMount, onDestroy } from 'svelte'
   import { modelState, setExpression as setExprState, setPose as setPoseState } from '../stores/modelStore.svelte'
   import { addRecordAction } from '../stores/recordingStore.svelte'
+  import { expressionPresetState, playExpression, reorderPresets, resetPresets } from '../stores/expressionPresetStore.svelte'
+
+  let draggedIndex: number | null = null
+  let dragOverIndex: number | null = null
 
   function setExpression(id: string) {
     setExprState(id)
@@ -30,6 +34,37 @@
     }
   }
 
+  function handlePresetClick(id: string) {
+    playExpression(id)
+    addRecordAction('expression', id)
+  }
+
+  function handleDragStart(index: number) {
+    draggedIndex = index
+  }
+
+  function handleDragOver(e: DragEvent, index: number) {
+    e.preventDefault()
+    dragOverIndex = index
+  }
+
+  function handleDragLeave() {
+    dragOverIndex = null
+  }
+
+  function handleDrop(index: number) {
+    if (draggedIndex !== null && draggedIndex !== index) {
+      reorderPresets(draggedIndex, index)
+    }
+    draggedIndex = null
+    dragOverIndex = null
+  }
+
+  function handleDragEnd() {
+    draggedIndex = null
+    dragOverIndex = null
+  }
+
   onMount(() => {
     window.addEventListener('keydown', handleKeydown)
   })
@@ -40,6 +75,32 @@
 </script>
 
 <div class="control-panel">
+  <div class="section">
+    <h3>表情预设 <span class="hint">拖拽排序</span></h3>
+    <div class="preset-grid">
+      {#each expressionPresetState.presets as preset, index}
+        <button
+          class="preset-btn"
+          class:active={expressionPresetState.currentPresetId === preset.id}
+          class:dragging={draggedIndex === index}
+          class:drag-over={dragOverIndex === index}
+          draggable="true"
+          onclick={() => handlePresetClick(preset.id)}
+          ondragstart={() => handleDragStart(index)}
+          ondragover={(e) => handleDragOver(e, index)}
+          ondragleave={handleDragLeave}
+          ondrop={() => handleDrop(index)}
+          ondragend={handleDragEnd}
+          title={preset.name}
+        >
+          <span class="emoji">{preset.emoji}</span>
+          <span class="preset-name">{preset.name}</span>
+        </button>
+      {/each}
+    </div>
+    <button class="reset-btn" onclick={resetPresets}>重置顺序</button>
+  </div>
+
   <div class="section">
     <h3>表情控制 <span class="hint">快捷键 1-5</span></h3>
     <div class="grid">
@@ -164,5 +225,81 @@
   .pose-btn.active .shortcut {
     background: rgba(255, 255, 255, 0.2);
     color: currentColor;
+  }
+
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .preset-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 4px;
+    background: #2d3748;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    color: #a0aec0;
+    cursor: grab;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .preset-btn:hover {
+    background: #4a5568;
+    color: #e2e8f0;
+    transform: translateY(-2px);
+  }
+
+  .preset-btn:active {
+    cursor: grabbing;
+  }
+
+  .preset-btn.active {
+    border-color: #f6ad55;
+    background: #7c2d12;
+    color: #fbd38d;
+  }
+
+  .preset-btn.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+  }
+
+  .preset-btn.drag-over {
+    border-color: #68d391;
+    background: #22543d;
+  }
+
+  .preset-btn .emoji {
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  .preset-btn .preset-name {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .reset-btn {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    color: #718096;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .reset-btn:hover {
+    background: #2d3748;
+    color: #a0aec0;
+    border-color: #718096;
   }
 </style>
