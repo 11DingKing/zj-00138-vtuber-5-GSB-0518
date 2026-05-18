@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { modelState, setExpression as setExprState, setPose as setPoseState } from '../stores/modelStore.svelte'
   import { addRecordAction } from '../stores/recordingStore.svelte'
+  import { expressionPresetState, playExpression, reorderPreset } from '../stores/expressionPresetStore.svelte'
 
   function setExpression(id: string) {
     setExprState(id)
@@ -16,6 +17,39 @@
   function setPose(id: string) {
     setPoseState(id)
     addRecordAction('pose', id)
+  }
+
+  function triggerPreset(presetId: string, expressionId: string) {
+    playExpression(expressionId)
+    setExpression(expressionId)
+  }
+
+  let dragIndex = $state<number | null>(null)
+  let dragOverIndex = $state<number | null>(null)
+
+  function handleDragStart(index: number) {
+    dragIndex = index
+  }
+
+  function handleDragOver(e: DragEvent, index: number) {
+    e.preventDefault()
+    if (dragIndex !== null && dragIndex !== index) {
+      dragOverIndex = index
+    }
+  }
+
+  function handleDrop(e: DragEvent, index: number) {
+    e.preventDefault()
+    if (dragIndex !== null && dragIndex !== index) {
+      reorderPreset(dragIndex, index)
+    }
+    dragIndex = null
+    dragOverIndex = null
+  }
+
+  function handleDragEnd() {
+    dragIndex = null
+    dragOverIndex = null
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -40,6 +74,31 @@
 </script>
 
 <div class="control-panel">
+  <div class="section">
+    <h3>表情预设 <span class="hint">点击播放 · 拖拽排序</span></h3>
+    <div class="preset-grid">
+      {#each expressionPresetState.presets as preset, i}
+        <button
+          class="preset-btn"
+          class:dragging={dragIndex === i}
+          class:drag-over={dragOverIndex === i && dragIndex !== null}
+          draggable="true"
+          ondragstart={(e) => {
+            e.dataTransfer.effectAllowed = 'move'
+            handleDragStart(i)
+          }}
+          ondragover={(e) => handleDragOver(e, i)}
+          ondrop={(e) => handleDrop(e, i)}
+          ondragend={handleDragEnd}
+          onclick={() => triggerPreset(preset.id, preset.expressionId)}
+        >
+          <span class="emoji">{preset.emoji}</span>
+          <span class="preset-name">{preset.name}</span>
+        </button>
+      {/each}
+    </div>
+  </div>
+
   <div class="section">
     <h3>表情控制 <span class="hint">快捷键 1-5</span></h3>
     <div class="grid">
@@ -104,6 +163,53 @@
     font-size: 11px;
     font-weight: 400;
     color: #718096;
+  }
+
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .preset-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 8px;
+    background: #2d3748;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    color: #a0aec0;
+    cursor: grab;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .preset-btn:hover {
+    background: #4a5568;
+    color: #e2e8f0;
+    transform: translateY(-2px);
+  }
+
+  .preset-btn.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+  }
+
+  .preset-btn.drag-over {
+    border-color: #9f7aea;
+    transform: scale(1.05);
+  }
+
+  .emoji {
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  .preset-name {
+    font-size: 12px;
+    font-weight: 500;
   }
 
   .grid {
