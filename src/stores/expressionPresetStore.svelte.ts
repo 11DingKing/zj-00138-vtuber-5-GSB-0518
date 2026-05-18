@@ -28,7 +28,10 @@ export function playPreset(presetId: string) {
   }, 1500)
 }
 
-export function reorderPresets(fromIndex: number, toIndex: number) {
+export function reorderPresets(fromId: string, toId: string) {
+  const fromIndex = presetState.presets.findIndex(p => p.id === fromId)
+  const toIndex = presetState.presets.findIndex(p => p.id === toId)
+  if (fromIndex === -1 || toIndex === -1) return
   const [moved] = presetState.presets.splice(fromIndex, 1)
   presetState.presets.splice(toIndex, 0, moved)
 }

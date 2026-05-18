@@ -4,7 +4,8 @@
   import { addRecordAction } from '../stores/recordingStore.svelte'
   import { presetState, playPreset, reorderPresets } from '../stores/expressionPresetStore.svelte'
 
-  let dragIndex: number | null = null
+  let dragId: string | null = null
+  let dropTargetId: string | null = null
 
   function setExpression(id: string) {
     setExprState(id)
@@ -33,19 +34,45 @@
     }
   }
 
-  function onDragStart(index: number) {
-    dragIndex = index
+  function onDragStart(e: DragEvent, id: string) {
+    dragId = id
+    if (e.dataTransfer) {
+      e.dataTransfer.setData('text/plain', id)
+      e.dataTransfer.effectAllowed = 'move'
+    }
   }
 
-  function onDragOver(e: DragEvent, index: number) {
+  function onDragOver(e: DragEvent) {
     e.preventDefault()
-    if (dragIndex === null || dragIndex === index) return
-    reorderPresets(dragIndex, index)
-    dragIndex = index
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move'
+    }
+  }
+
+  function onDragEnter(id: string) {
+    if (dragId !== null && dragId !== id) {
+      dropTargetId = id
+    }
+  }
+
+  function onDragLeave(id: string) {
+    if (dropTargetId === id) {
+      dropTargetId = null
+    }
+  }
+
+  function onDrop(e: DragEvent, targetId: string) {
+    e.preventDefault()
+    if (dragId !== null && dragId !== targetId) {
+      reorderPresets(dragId, targetId)
+    }
+    dragId = null
+    dropTargetId = null
   }
 
   function onDragEnd() {
-    dragIndex = null
+    dragId = null
+    dropTargetId = null
   }
 
   onMount(() => {
@@ -79,14 +106,18 @@
   <div class="section">
     <h3>表情预设 <span class="hint">拖拽排序</span></h3>
     <div class="preset-grid">
-      {#each presetState.presets as preset, i (preset.id)}
+      {#each presetState.presets as preset (preset.id)}
         <button
           class="preset-btn"
           class:active={presetState.activePresetId === preset.id}
-          class:dragging={dragIndex === i}
+          class:dragging={dragId === preset.id}
+          class:drop-target={dropTargetId === preset.id}
           draggable="true"
-          ondragstart={() => onDragStart(i)}
-          ondragover={(e) => onDragOver(e, i)}
+          ondragstart={(e) => onDragStart(e, preset.id)}
+          ondragover={onDragOver}
+          ondragenter={() => onDragEnter(preset.id)}
+          ondragleave={() => onDragLeave(preset.id)}
+          ondrop={(e) => onDrop(e, preset.id)}
           ondragend={onDragEnd}
           onclick={() => playPreset(preset.id)}
         >
@@ -238,6 +269,12 @@
   .preset-btn.dragging {
     opacity: 0.4;
     transform: scale(0.9);
+  }
+
+  .preset-btn.drop-target {
+    border-color: #f687b3;
+    background: #553249;
+    transform: scale(1.05);
   }
 
   .preset-btn .emoji {
