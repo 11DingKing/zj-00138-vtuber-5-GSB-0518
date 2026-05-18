@@ -3,11 +3,14 @@
   import { modelState, setExpression } from '../stores/modelStore.svelte'
   import { recordingState } from '../stores/recordingStore.svelte'
   import { facialCaptureState } from '../stores/facialCaptureStore.svelte'
+  import { onExpressionPlay } from '../stores/expressionPresetStore.svelte'
+  import type { ExpressionPreset } from '../types'
 
   let canvasEl: HTMLCanvasElement
   let animationId: number
   let blinkTimer: number
   let time = 0
+  let unsubscribeExpression: (() => void) | null = null
 
   function drawCharacter(ctx: CanvasRenderingContext2D, width: number, height: number) {
     ctx.clearRect(0, 0, width, height)
@@ -169,6 +172,10 @@
     }
   }
 
+  function handleExpressionPlay(preset: ExpressionPreset) {
+    console.log(`播放表情: ${preset.name} (${preset.emoji})`)
+  }
+
   onMount(() => {
     const canvas = canvasEl
     canvas.width = canvas.offsetWidth * window.devicePixelRatio
@@ -179,11 +186,15 @@
     }
     animate()
     blinkTimer = window.setInterval(autoBlink, 3000 + Math.random() * 2000)
+    unsubscribeExpression = onExpressionPlay(handleExpressionPlay)
   })
 
   onDestroy(() => {
     cancelAnimationFrame(animationId)
     clearInterval(blinkTimer)
+    if (unsubscribeExpression) {
+      unsubscribeExpression()
+    }
   })
 </script>
 
