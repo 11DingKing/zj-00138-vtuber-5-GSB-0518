@@ -3,6 +3,7 @@
   import { modelState, setExpression } from '../stores/modelStore.svelte'
   import { recordingState } from '../stores/recordingStore.svelte'
   import { facialCaptureState } from '../stores/facialCaptureStore.svelte'
+  import type { ExpressionPreset } from '../types'
 
   let canvasEl: HTMLCanvasElement
   let animationId: number
@@ -169,6 +170,11 @@
     }
   }
 
+  function handlePresetEvent(e: Event) {
+    const preset = (e as CustomEvent<ExpressionPreset>).detail
+    console.log(`播放表情: ${preset.name} (${preset.emoji})`)
+  }
+
   onMount(() => {
     const canvas = canvasEl
     canvas.width = canvas.offsetWidth * window.devicePixelRatio
@@ -179,11 +185,13 @@
     }
     animate()
     blinkTimer = window.setInterval(autoBlink, 3000 + Math.random() * 2000)
+    window.addEventListener('expression-preset', handlePresetEvent)
   })
 
   onDestroy(() => {
     cancelAnimationFrame(animationId)
     clearInterval(blinkTimer)
+    window.removeEventListener('expression-preset', handlePresetEvent)
   })
 </script>
 
